@@ -1,0 +1,19 @@
+include(ExternalProject)
+
+ExternalProject_Add(
+  dlpack
+  GIT_REPOSITORY "https://github.com/dmlc/dlpack"
+  GIT_TAG "b90e939"
+  UPDATE_COMMAND ""
+  PATCH_COMMAND ""
+  SOURCE_DIR ${CMAKE_SOURCE_DIR}/dlpack
+  CMAKE_ARGS -DCMAKE_INSTALL_LIBDIR=lib
+             -DBUILD_SHARED_LIBS=ON
+             -DCMAKE_BUILD_TYPE=Release
+             -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+             -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+             -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+  BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
+  INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
+  INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
+  TEST_COMMAND "")

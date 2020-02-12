@@ -1,0 +1,19 @@
+include(ExternalProject)
+
+ExternalProject_Add(
+  googletest
+  GIT_REPOSITORY "https://github.com/google/googletest.git"
+  GIT_TAG "eb9225c"
+  UPDATE_COMMAND ""
+  PATCH_COMMAND ""
+  SOURCE_DIR ${CMAKE_SOURCE_DIR}/googletest
+  CMAKE_ARGS -DCMAKE_INSTALL_LIBDIR=lib
+             -DBUILD_SHARED_LIBS=ON
+             -DCMAKE_BUILD_TYPE=Release
+             -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+             -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+             -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+  BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
+  INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
+  INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
+  TEST_COMMAND "")

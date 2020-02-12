@@ -1,0 +1,31 @@
+--- a/builtin_op_importers.cpp
++++ b/builtin_op_importers.cpp
+@@ -1073,7 +1073,7 @@
+         inputASqueezed = squeeze->getOutput(0);
+     }
+ 
+-    constexpr auto getMatrixOp = [] (const nvinfer1::ITensor& input, bool transpose)
++    const auto getMatrixOp = [] (const nvinfer1::ITensor& input, bool transpose)
+     {
+         return (input.getDimensions().nbDims == 1) ?
+         nvinfer1::MatrixOperation::kVECTOR :
+@@ -1215,7 +1215,7 @@
+     nvinfer1::ITensor& inputA = convertToTensor(inputs.at(0), ctx);
+     nvinfer1::ITensor& inputB = convertToTensor(inputs.at(1), ctx);
+ 
+-    constexpr auto getMatrixOp = [] (const nvinfer1::ITensor& input)
++    const auto getMatrixOp = [] (const nvinfer1::ITensor& input)
+     {
+         return (input.getDimensions().nbDims == 1) ?
+             nvinfer1::MatrixOperation::kVECTOR :
+--- a/third_party/onnx/CMakeLists.txt
++++ b/third_party/onnx/CMakeLists.txt
+@@ -195,7 +195,7 @@
+         ${ONNX_DLLEXPORT_STR}${CMAKE_CURRENT_BINARY_DIR})
+     if(BUILD_ONNX_PYTHON)
+       list(APPEND PROTOC_ARGS --python_out
+-                  ${ONNX_DLLEXPORT_STR}${CMAKE_CURRENT_BINARY_DIR})
++                  ${CMAKE_CURRENT_BINARY_DIR})
+       if(ONNX_GEN_PB_TYPE_STUBS)
+         # Haven't figured out how to generate mypy stubs on Windows yet
+         if(NOT WIN32)
