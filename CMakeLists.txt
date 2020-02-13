@@ -11,7 +11,7 @@ if(__CMAKE_CROSSCOMPILING_OVERRIDE)
   set(CMAKE_CROSSCOMPILING ${__CMAKE_CROSSCOMPILING})
 endif()
 
-project(mxnet C CXX)
+project(mxnet CXX)
 message(
   STATUS "CMake version '${CMAKE_VERSION}' using generator '${CMAKE_GENERATOR}'"
 )
@@ -200,12 +200,32 @@ assign_source_group("Include" ${GROUP_Include})
 assign_source_group("CUDA" ${GROUP_CUDA})
 
 # ##############################################################################
-# INITIALISE LIBRABRY LIST
+# INITIALISE LIBRARY LIST
 # ##############################################################################
 
 if(NOT mxnet_LINKER_LIBS)
   set(mxnet_LINKER_LIBS "")
 endif(NOT mxnet_LINKER_LIBS)
+
+if(NOT mxnet_COMPILE_OPTIONS)
+  set(mxnet_COMPILE_OPTIONS "")
+endif(NOT mxnet_COMPILE_OPTIONS)
+
+if(NOT mxnet_COMPILE_DEFINITIONS)
+  set(mxnet_COMPILE_DEFINITIONS "")
+endif(NOT mxnet_COMPILE_DEFINITIONS)
+
+if(NOT mxnet_LINKER_OPTIONS)
+  set(mxnet_LINKER_OPTIONS "")
+endif(NOT mxnet_LINKER_OPTIONS)
+
+if(NOT mxnet_INCLUDE_DIRS)
+  set(mxnet_INCLUDE_DIRS "")
+endif(NOT mxnet_INCLUDE_DIRS)
+
+if(NOT mxnet_LINK_DIRS)
+  set(mxnet_LINK_DIRS "")
+endif(NOT mxnet_LINK_DIRS)
 
 # ##############################################################################
 # SET COMPILER OPTIONS
@@ -213,22 +233,21 @@ endif(NOT mxnet_LINKER_LIBS)
 
 # Switch off modern thread local for dmlc-core, please see:
 # https://github.com/dmlc/dmlc-core/issues/571#issuecomment-543467484
-add_definitions(-DDMLC_MODERN_THREAD_LOCAL=0)
+list(APPEND mxnet_COMPILE_DEFINITIONS -DDMLC_MODERN_THREAD_LOCAL=0)
 # disable stack trace in exception by default.
-add_definitions(-DDMLC_LOG_STACK_TRACE_SIZE=0)
-add_definitions(-DDMLC_LOG_FATAL_THROW=1)
+list(APPEND mxnet_COMPILE_DEFINITIONS -DDMLC_LOG_STACK_TRACE_SIZE=0)
+list(APPEND mxnet_COMPILE_DEFINITIONS -DDMLC_LOG_FATAL_THROW=1)
 
 if(MSVC)
-  add_definitions(-DWIN32_LEAN_AND_MEAN)
-  add_definitions(-DDMLC_USE_CXX11)
-  add_definitions(-D_SCL_SECURE_NO_WARNINGS)
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-  add_definitions(-DMXNET_EXPORTS)
-  add_definitions(-DNNVM_EXPORTS)
-  add_definitions(-DDMLC_STRICT_CXX11)
-  add_definitions(-DNOMINMAX)
-  set(CMAKE_C_FLAGS "/MP")
-  set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} /bigobj")
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DWIN32_LEAN_AND_MEAN)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DDMLC_USE_CXX11)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -D_SCL_SECURE_NO_WARNINGS)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -D_CRT_SECURE_NO_WARNINGS)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_EXPORTS)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DNNVM_EXPORTS)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DDMLC_STRICT_CXX11)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DNOMINMAX)
+  list(APPEND mxnet_COMPILE_OPTIONS "/bigobj")
 else()
   include(CheckCXXCompilerFlag)
   if(USE_CXX14_IF_AVAILABLE)
@@ -236,41 +255,45 @@ else()
   endif()
   check_cxx_compiler_flag("-std=c++11" SUPPORT_CXX11)
   check_cxx_compiler_flag("-std=c++0x" SUPPORT_CXX0X)
-  set(CMAKE_C_FLAGS
-      "${CMAKE_C_FLAGS} -Wall -Wno-unknown-pragmas -Wno-sign-compare")
+
+  list(APPEND mxnet_COMPILE_OPTIONS "-Wall")
+  list(APPEND mxnet_COMPILE_OPTIONS "-Wno-unknown-pragmas")
+  list(APPEND mxnet_COMPILE_OPTIONS "-Wno-sign-compare")
+
   if("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang$")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-braced-scalar-init")
+    list(APPEND mxnet_COMPILE_OPTIONS "-Wno-braced-scalar-init")
   endif()
+
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_ASSERTIONS")
+    list(APPEND mxnet_COMPILE_OPTIONS "-O0")
+    list(APPEND mxnet_COMPILE_OPTIONS "-D_GLIBCXX_ASSERTIONS")
   elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    add_definitions(-DNDEBUG=1)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -g")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_ASSERTIONS")
+    list(APPEND mxnet_COMPILE_OPTIONS "-O3")
+    list(APPEND mxnet_COMPILE_OPTIONS "-D_GLIBCXX_ASSERTIONS")
   else()
-    add_definitions(-DNDEBUG=1)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
+    list(APPEND mxnet_COMPILE_OPTIONS "-O3")
   endif()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS}")
+
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DDMLC_USE_CXX11=1)
   if(SUPPORT_CXX14)
-    add_definitions(-DDMLC_USE_CXX11=1)
-    add_definitions(-DDMLC_USE_CXX14=1)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+    list(APPEND mxnet_COMPILE_DEFINITIONS -DDMLC_USE_CXX14=1)
+    set(CMAKE_CXX_STANDARD 14)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
   elseif(SUPPORT_CXX11)
-    add_definitions(-DDMLC_USE_CXX11=1)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+    set(CMAKE_CXX_STANDARD 11)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
   elseif(SUPPORT_CXX0X)
-    add_definitions(-DDMLC_USE_CXX11=1)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+    list(APPEND mxnet_COMPILE_DEFINITIONS "-std=c++0x")
   endif()
 endif(MSVC)
 
 if(USE_GPROF)
   message(STATUS "Using GPROF")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -g -pg")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -g -pg")
-  set(CMAKE_LINK_LIBRARY_FILE_FLAG "${CMAKE_LINK_LIBRARY_FILE_FLAG} -g -pg")
+  list(APPEND mxnet_COMPILE_OPTIONS "-fno-omit-frame-pointer")
+  list(APPEND mxnet_COMPILE_OPTIONS "-g")
+  list(APPEND mxnet_COMPILE_OPTIONS "-pg")
+  list(APPEND mxnet_LINKER_OPTIONS "-g")
+  list(APPEND mxnet_LINKER_OPTIONS "-pg")
 endif()
 
 if(USE_VTUNE)
@@ -278,11 +301,13 @@ if(USE_VTUNE)
   if(NOT VTUNE_ROOT)
     set(VTUNE_ROOT /opt/intel/vtune_amplifier_xe_2017)
   endif()
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -g -pg")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -g -pg")
-  set(CMAKE_LINK_LIBRARY_FILE_FLAG "${CMAKE_LINK_LIBRARY_FILE_FLAG} -g -pg")
-  add_definitions(-DMXNET_USE_VTUNE=1)
-  include_directories(${VTUNE_ROOT}/include)
+  list(APPEND mxnet_COMPILE_OPTIONS "-fno-omit-frame-pointer")
+  list(APPEND mxnet_COMPILE_OPTIONS "-g")
+  list(APPEND mxnet_COMPILE_OPTIONS "-pg")
+  list(APPEND mxnet_LINKER_OPTIONS "-g")
+  list(APPEND mxnet_LINKER_OPTIONS "-pg")
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_VTUNE=1)
+  list(APPEND mxnet_INCLUDE_DIRS ${VTUNE_ROOT}/include)
   list(APPEND mxnet_LINKER_LIBS ${VTUNE_ROOT}/lib64/libittnotify.a)
   list(APPEND mxnet_LINKER_LIBS dl)
 endif()
@@ -300,25 +325,25 @@ if(ENABLE_TESTCOVERAGE)
     message(FATAL_ERROR "gcov not found! Aborting...")
   endif() # NOT GCOV_PATH
 
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
-  set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} --coverage")
-  set(GTEST_LIBRARIES "${GTEST_LIBRARIES} --coverage")
-  link_libraries(gcov)
+  list(APPEND mxnet_COMPILE_OPTIONS "--coverage")
+  list(APPEND mxnet_LINKER_OPTIONS "--coverage")
+  list(APPEND mxnet_LINKER_LIBS gcov)
 endif()
 
 if(USE_ASAN)
-  set(CMAKE_C_FLAGS
-      "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
-  set(CMAKE_CXX_FLAGS
-      "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
-  set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=address")
-  set(GTEST_LIBRARIES "${GTEST_LIBRARIES} -fsanitize=address")
-  list(APPEND mxnet_LINKER_LIBS asan)
+  list(APPEND mxnet_COMPILE_OPTIONS "-fno-omit-frame-pointer")
+  list(APPEND mxnet_COMPILE_OPTIONS "-fsanitize=address")
+  list(APPEND mxnet_LINKER_OPTIONS "-fno-omit-frame-pointer")
+  list(APPEND mxnet_LINKER_OPTIONS "-fsanitize=address")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    list(APPEND mxnet_LINKER_LIBS -static-libasan)
+  else(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    list(APPEND mxnet_LINKER_LIBS asan)
+  endif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 endif()
 
 if(USE_OPERATOR_TUNING AND USE_OPENMP)
-  add_definitions(-DMXNET_USE_OPERATOR_TUNING=1)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_OPERATOR_TUNING=1)
 endif()
 
 # Prevent stripping out symbols (operator registrations, for example)
@@ -331,9 +356,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 if(MSVC)
-  foreach(flag_var
-          CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
-          CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+  foreach(flag_var mxnet_COMPILE_OPTIONS)
     if(${flag_var} MATCHES "/MD")
       string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
     endif(${flag_var} MATCHES "/MD")
@@ -341,17 +364,24 @@ if(MSVC)
 endif()
 
 if(MSVC)
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /EHsc")
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /EHsc /Gy")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} /EHsc /Gy")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO
-      "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /EHsc /Gy")
-  set(CMAKE_SHARED_LINKER_FLAGS_RELEASE
-      "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /OPT:REF /OPT:ICF")
-  set(CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL
-      "${CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL} /OPT:REF /OPT:ICF")
-  set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO
-      "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF /OPT:ICF")
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    list(APPEND mxnet_COMPILE_OPTIONS "/EHsc")
+  elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    list(APPEND mxnet_COMPILE_OPTIONS "/EHsc")
+    list(APPEND mxnet_COMPILE_OPTIONS "/Gy")
+    list(APPEND mxnet_LINKER_OPTIONS "/OPT:REF")
+    list(APPEND mxnet_LINKER_OPTIONS "/OPT:ICF")
+  elseif(CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+    list(APPEND mxnet_COMPILE_OPTIONS "/EHsc")
+    list(APPEND mxnet_COMPILE_OPTIONS "/Gy")
+    list(APPEND mxnet_LINKER_OPTIONS "/OPT:REF")
+    list(APPEND mxnet_LINKER_OPTIONS "/OPT:ICF")
+  elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    list(APPEND mxnet_COMPILE_OPTIONS "/EHsc")
+    list(APPEND mxnet_COMPILE_OPTIONS "/Gy")
+    list(APPEND mxnet_LINKER_OPTIONS "/OPT:REF")
+    list(APPEND mxnet_LINKER_OPTIONS "/OPT:ICF")
+  endif()
 endif()
 
 # ##############################################################################
@@ -359,7 +389,7 @@ endif()
 # ##############################################################################
 
 # TVM Op
-if(USE_TVM_OP AND EXISTS ${CMAKE_BINARY_DIR}/lib/libtvm.so)
+if(USE_TVM_OP AND EXISTS ${CMAKE_BINARY_DIR}/lib/libtvm_runtime.so)
   if(NOT Python3_EXECUTABLE)
     find_package(PythonInterp 3 REQUIRED)
     set(Python3_EXECUTABLE
@@ -370,12 +400,10 @@ if(USE_TVM_OP AND EXISTS ${CMAKE_BINARY_DIR}/lib/libtvm.so)
     endif()
   endif()
 
-  add_definitions(-DMXNET_USE_TVM_OP=1)
-  set(TVM_INCLUDE_DIR ${CMAKE_BINARY_DIR}/include)
-  set(TVM_LIBRARIES
-      ${CMAKE_BINARY_DIR}/lib/libtvm.so
-      ${CMAKE_BINARY_DIR}/lib/libtvm_runtime.so
-      ${CMAKE_BINARY_DIR}/lib/libtvm_topi.so)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_TVM_OP=1)
+  list(APPEND mxnet_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/include)
+  list(APPEND mxnet_LINK_DIRS ${CMAKE_BINARY_DIR}/lib)
+  list(APPEND mxnet_LINKER_LIBS tvm_runtime)
 
   set(TVM_OP_COMPILE_OPTIONS
       "-o${CMAKE_CURRENT_BINARY_DIR}" "--config"
@@ -393,11 +421,9 @@ if(USE_TVM_OP AND EXISTS ${CMAKE_BINARY_DIR}/lib/libtvm.so)
   # ty/tvm:$ENV{LD_LIBRARY_PATH} ${Python3_EXECUTABLE}
   # ${CMAKE_CURRENT_SOURCE_DIR}/contrib/tvmop/compile.py
   # ${TVM_OP_COMPILE_OPTIONS})
-else(USE_TVM_OP AND EXISTS ${CMAKE_BINARY_DIR}/lib/libtvm.so)
+else(USE_TVM_OP AND EXISTS ${CMAKE_BINARY_DIR}/lib/libtvm_runtime.so)
   set(USE_TVM_OP OFF)
-  set(TVM_INCLUDE_DIR "")
-  set(TVM_LIBRARIES "")
-endif(USE_TVM_OP AND EXISTS ${CMAKE_BINARY_DIR}/lib/libtvm.so)
+endif(USE_TVM_OP AND EXISTS ${CMAKE_BINARY_DIR}/lib/libtvm_runtime.so)
 
 # ONNX TensorRT
 if(USE_TENSORRT)
@@ -417,6 +443,8 @@ if(USE_TENSORRT)
       onnx_proto
       onnx
       ${PROTOBUF_LIBRARY})
+    list(APPEND mxnet_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/include)
+    list(APPEND mxnet_LINK_DIRS ${CMAKE_BINARY_DIR}/lib)
   endif()
 endif()
 
@@ -424,13 +452,19 @@ endif()
 if(USE_MKLDNN)
   # CPU architecture (e.g., C5) can't run on another architecture (e.g., g3).
   if(MSVC)
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /EHsc /MT")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /EHsc /Gy /MT")
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+      list(APPEND mxnet_COMPILE_OPTIONS "/EHsc")
+      list(APPEND mxnet_COMPILE_OPTIONS "/MT")
+    elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+      list(APPEND mxnet_COMPILE_OPTIONS "/EHsc")
+      list(APPEND mxnet_COMPILE_OPTIONS "/MT")
+      list(APPEND mxnet_COMPILE_OPTIONS "/Gy")
+    endif()
   endif()
 
   find_package(dnnl REQUIRED)
   list(APPEND mxnet_LINKER_LIBS DNNL::dnnl)
-  add_definitions(-DMXNET_USE_MKLDNN=1)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_MKLDNN=1)
 endif()
 
 # DLPACK
@@ -447,7 +481,9 @@ if(USE_DIST_KVSTORE)
     message(ERROR "USE_DIST_KVSTORE set but ps-lite not built")
     set(USE_DIST_KVSTORE OFF)
   else()
-    add_definitions(-DMXNET_USE_DIST_KVSTORE)
+    list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_DIST_KVSTORE)
+    list(APPEND mxnet_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/include)
+    list(APPEND mxnet_LINK_DIRS ${CMAKE_BINARY_DIR}/lib)
     list(APPEND mxnet_LINKER_LIBS pslite)
   endif()
 endif()
@@ -457,7 +493,7 @@ if(USE_OPENMP)
   find_package(OpenMP REQUIRED)
   if(OPENMP_FOUND)
     list(APPEND mxnet_LINKER_LIBS OpenMP::OpenMP_CXX)
-    add_definitions(-DMXNET_USE_OPENMP=1)
+    list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_OPENMP=1)
   else(OPENMP_FOUND)
     # This should build on Windows, but there's some problem and I don't have a
     # Windows box, so could a Windows user please fix?
@@ -474,7 +510,7 @@ if(USE_OPENMP)
         list(APPEND mxnet_LINKER_LIBS Threads::Threads)
       endif()
       list(APPEND mxnet_LINKER_LIBS OpenMP::OpenMP_CXX)
-      add_definitions(-DMXNET_USE_OPENMP=1)
+      list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_OPENMP=1)
     endif()
   endif(OPENMP_FOUND)
 elseif(UNIX AND NOT ANDROID)
@@ -490,24 +526,22 @@ find_package(GTest REQUIRED)
 
 # MSHADOW
 add_subdirectory("3rdparty/mshadow")
-list(APPEND mxnet_LINKER_LIBS ${mshadow_LINKER_LIBS})
+list(APPEND mxnet_LINKER_LIBS mshadow)
 
 # ##############################################################################
 # FIND DEPENDENCIES
 # ##############################################################################
 
-set(ALT_MALLOC_FLAGS
-    "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
-)
+set(ALT_MALLOC_FLAGS "-fno-builtin-malloc" "-fno-builtin-calloc"
+                     "-fno-builtin-realloc" "-fno-builtin-free")
 
 # GPERFTOOLS
 if(USE_GPERFTOOLS)
   find_package(Gperftools)
   if(GPERFTOOLS_FOUND)
     message(STATUS "Using Gperftools malloc (tcmalloc)")
-    include_directories(${GPERFTOOLS_INCLUDE_DIR})
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ALT_MALLOC_FLAGS}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ALT_MALLOC_FLAGS}")
+    list(APPEND mxnet_INCLUDE_DIRS ${GPERFTOOLS_INCLUDE_DIR})
+    list(APPEND mxnet_COMPILE_OPTIONS ${ALT_MALLOC_FLAGS})
     list(APPEND mxnet_LINKER_LIBS ${GPERFTOOLS_LIBRARIES})
     set(USE_JEMALLOC 0)
   endif()
@@ -523,10 +557,9 @@ if(USE_JEMALLOC)
   find_package(JeMalloc)
   if(JEMALLOC_FOUND)
     message(STATUS "Using JEMalloc malloc")
-    add_definitions(-DUSE_JEMALLOC)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ALT_MALLOC_FLAGS}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ALT_MALLOC_FLAGS}")
-    include_directories(${JEMALLOC_INCLUDE_DIRS})
+    list(APPEND mxnet_COMPILE_DEFINITIONS -DUSE_JEMALLOC)
+    list(APPEND mxnet_COMPILE_OPTIONS ${ALT_MALLOC_FLAGS})
+    list(APPEND mxnet_INCLUDE_DIRS ${JEMALLOC_INCLUDE_DIRS})
     list(APPEND mxnet_LINKER_LIBS ${JEMALLOC_LIBRARIES})
   endif()
 endif()
@@ -538,20 +571,20 @@ if(USE_OPENCV)
     message(STATUS "OpenCV imgcodecs missing")
     find_package(OpenCV REQUIRED COMPONENTS core highgui imgproc)
   endif()
-  include_directories(SYSTEM ${OpenCV_INCLUDE_DIRS})
+  list(APPEND mxnet_INCLUDE_DIRS ${OpenCV_INCLUDE_DIRS})
   list(APPEND mxnet_LINKER_LIBS ${OpenCV_LIBS})
   message(STATUS "OpenCV ${OpenCV_VERSION} found (${OpenCV_CONFIG_PATH})")
   message(STATUS " OpenCV_LIBS=${OpenCV_LIBS}")
-  add_definitions(-DMXNET_USE_OPENCV=1)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_OPENCV=1)
 else(USE_OPENCV)
   message(STATUS "OpenCV Disabled")
-  add_definitions(-DMXNET_USE_OPENCV=0)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_OPENCV=0)
 endif()
 
 # LAPACK
 if(USE_LAPACK)
   message("USE_LAPACK is ON")
-  add_definitions(-DMXNET_USE_LAPACK=1)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_LAPACK=1)
   # In the CMAKE_BUILD_TYPE="Distribution" case, we link against Blas libraries
   # that already provide lapack symbols. Thus -llapack would be wrong.
   if(NOT MSVC AND NOT CMAKE_BUILD_TYPE STREQUAL "Distribution")
@@ -571,8 +604,8 @@ endif()
 if(USE_CUDNN)
   find_package(CUDNN)
   if(CUDNN_FOUND)
-    add_definitions(-DUSE_CUDNN)
-    include_directories(SYSTEM ${CUDNN_INCLUDE})
+    list(APPEND mxnet_COMPILE_DEFINITIONS -DUSE_CUDNN)
+    list(APPEND mxnet_INCLUDE_DIRS ${CUDNN_INCLUDE})
     list(APPEND mxnet_LINKER_LIBS ${CUDNN_LIBRARY})
   else()
     set(USE_CUDNN OFF)
@@ -610,38 +643,37 @@ if(USE_CUDA)
   if(ENABLE_CUDA_RTC)
     if(CUDA_nvrtc_LIBRARY)
       list(APPEND mxnet_LINKER_LIBS CUDA::nvrtc cuda)
-      add_definitions(-DMXNET_ENABLE_CUDA_RTC=1)
+      list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_ENABLE_CUDA_RTC=1)
     else()
       message(
         FATAL_ERROR
           "ENABLE_CUDA_RTC=ON, but failed to find NVRTC. CMake will exit.")
     endif()
   endif()
-  list(APPEND SOURCE ${CUDA})
-  add_definitions(-DMXNET_USE_CUDA=1)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_CUDA=1)
 
   if(USE_NCCL)
     find_package(NCCL)
     if(NCCL_FOUND)
-      include_directories(${NCCL_INCLUDE_DIRS})
+      list(APPEND mxnet_INCLUDE_DIRS ${NCCL_INCLUDE_DIRS})
       list(APPEND mxnet_LINKER_LIBS ${NCCL_LIBRARIES})
-      add_definitions(-DMXNET_USE_NCCL=1)
+      list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_NCCL=1)
     else()
-      add_definitions(-DMXNET_USE_NCCL=0)
+      list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_NCCL=0)
       message(WARNING "Could not find NCCL libraries")
     endif()
   endif()
   if(UNIX)
     if(USE_NVTX AND CUDA_nvToolsExt_LIBRARY)
       list(APPEND mxnet_LINKER_LIBS CUDA::nvToolsExt)
-      add_definitions(-DMXNET_USE_NVTX=1)
+      list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_NVTX=1)
     else()
       message("Building without NVTX support.")
     endif()
   endif()
 
-  include_directories(${CUDAToolkit_INCLUDE_DIRS})
-  link_directories(${CUDAToolkit_LIBRARY_DIR})
+  list(APPEND mxnet_INCLUDE_DIRS ${CUDAToolkit_INCLUDE_DIRS})
+  list(APPEND mxnet_LINK_DIRS ${CUDAToolkit_LIBRARY_DIR})
 endif()
 
 # BLAS
@@ -661,7 +693,7 @@ if(USE_PLUGINS_WARPCTC)
   set(WARPCTC_LIB_RELEASE
       ""
       CACHE FILEPATH "WARPCTC lib")
-  include_directories(SYSTEM ${WARPCTC_INCLUDE})
+  list(APPEND mxnet_INCLUDE_DIRS ${WARPCTC_INCLUDE})
   list(APPEND mxnet_LINKER_LIBS ${WARPCTC_LIB})
   file(GLOB_RECURSE PLUGINS_SOURCE "plugin/warpctc/*.cc" "plugin/warpctc/*.h")
   file(GLOB_RECURSE PLUGINS_CUSRC "plugin/warpctc/*.cu")
@@ -672,7 +704,7 @@ endif()
 if(USE_PLUGIN_CAFFE)
   if(NOT USE_CUDA)
     set(CPU_ONLY ON)
-    add_definitions(-DCPU_ONLY=1)
+    list(APPEND mxnet_COMPILE_DEFINITIONS -DCPU_ONLY=1)
   endif()
   if(NOT DEFINED CAFFE_PATH)
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/caffe)
@@ -684,10 +716,9 @@ if(USE_PLUGIN_CAFFE)
     endif()
   endif()
   list(APPEND CMAKE_MODULE_PATH ${CAFFE_PATH}/cmake)
-  include_directories(${CAFFE_PATH}/include)
-  include_directories(${CAFFE_PATH}/build/src)
-  include_directories(${CMAKE_BINARY_DIR}/caffe/include)
-  link_directories(${CAFFE_PATH}/build/lib)
+  list(APPEND mxnet_INCLUDE_DIRS ${CAFFE_PATH}/include ${CAFFE_PATH}/build/src
+       ${CMAKE_BINARY_DIR}/caffe/include)
+  list(APPEND mxnet_LINK_DIRS ${CAFFE_PATH}/build/lib)
   if(NOT DEFINED CAFFE_PATH)
     message(
       FATAL_ERROR
@@ -697,8 +728,8 @@ if(USE_PLUGIN_CAFFE)
   file(GLOB_RECURSE PLUGINS_CUSRC "plugin/caffe/*.cu")
   list(APPEND SOURCE ${PLUGINS_SOURCE})
   list(APPEND CUDA ${PLUGINS_CUSRC})
-  include_directories(${CMAKE_BINARY_DIR}/include)
-  add_definitions(-DMXNET_USE_CAFFE=1)
+  list(APPEND mxnet_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/include)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_CAFFE=1)
   list(
     APPEND
     mxnet_LINKER_LIBS
@@ -722,7 +753,8 @@ endif(USE_PLUGIN_CAFFE)
 # CPP PACKAGE
 # ##############################################################################
 if(USE_CPP_PACKAGE)
-  add_definitions(-DMXNET_USE_CPP_PACKAGE=1)
+  # For some reason cmake is adding a "-D" to the beggining of this definition
+  list(APPEND mxnet_COMPILE_DEFINITIONS MXNET_USE_CPP_PACKAGE=1)
 endif()
 
 # ##############################################################################
@@ -733,42 +765,60 @@ if(NOT (EXTRA_OPERATORS STREQUAL ""))
   mxnet_source_group("Extra\\Cuda" GLOB_RECURSE "${EXTRA_OPERATORS}/*.cu")
   file(GLOB_RECURSE EXTRA_SRC "${EXTRA_OPERATORS}/*.cc")
   file(GLOB_RECURSE EXTRA_CUSRC "${EXTRA_OPERATORS}/*.cu")
-  list(APPEND SOURCE ${EXTRA_SRC} ${EXTRA_CUSRC})
+  list(APPEND SOURCE ${EXTRA_SRC})
+  list(APPEND CUDA ${EXTRA_CUSRC})
 endif()
 
 # ##############################################################################
 # MXNET LIBRARY
 # ##############################################################################
 
+# Add common include directories
+list(
+  APPEND
+  mxnet_INCLUDE_DIRS
+  include
+  3rdparty/nvidia_cub
+  3rdparty/tvm/nnvm/include
+  ${CMAKE_BINARY_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# Ensure we have no duplicate flags
+list(REMOVE_DUPLICATES mxnet_COMPILE_DEFINITIONS)
+list(REMOVE_DUPLICATES mxnet_COMPILE_OPTIONS)
+list(REMOVE_DUPLICATES mxnet_LINK_DIRS)
+list(REMOVE_DUPLICATES mxnet_INCLUDE_DIRS)
+
+foreach(opt in ${mxnet_COMPILE_OPTIONS})
+  set_source_files_properties(${SOURCE} PROPERTIES COMPILE_FLAGS ${opt})
+endforeach()
+foreach(def in ${mxnet_COMPILE_DEFINITIONS})
+  set_source_files_properties(${SOURCE} PROPERTIES COMPILE_DEFINITIONS ${def})
+endforeach()
+
 set(MXNET_INSTALL_TARGETS mxnet)
 if(UNIX)
-  list(APPEND MXNET_INSTALL_TARGETS mxnet_static)
-
   string(APPEND CMAKE_CUDA_FLAGS "${CUDA_ARCH_FLAGS_SPACES}")
 
   # Create dummy file since we want an empty shared library before linking
-  set(DUMMY_SOURCE ${CMAKE_BINARY_DIR}/dummy.c)
-  file(WRITE ${DUMMY_SOURCE} "")
+  # set(DUMMY_SOURCE ${CMAKE_BINARY_DIR}/dummy.cc) file(WRITE ${DUMMY_SOURCE}
+  # "")
 
-  add_library(mxnet_static STATIC ${SOURCE})
-  target_link_libraries(mxnet_static PUBLIC mshadow ${CMAKE_DL_LIBS}
-                                            ${TVM_LIBRARIES})
-  set_target_properties(mxnet_static PROPERTIES OUTPUT_NAME mxnet)
-  target_include_directories(
-    mxnet_static
-    PUBLIC include
-           3rdparty/nvidia_cub
-           3rdparty/tvm/nnvm/include
-           ${CMAKE_BINARY_DIR}/include
-           ${CMAKE_CURRENT_SOURCE_DIR}/include
-           ${CMAKE_CURRENT_SOURCE_DIR}/src
-           ${TVM_INCLUDE_DIR})
+  # add_library(mxnet_static STATIC ${SOURCE} ${CUDA})
+  # target_link_libraries(mxnet_static PUBLIC ${CMAKE_DL_LIBS}
+  # ${mxnet_LINKER_LIBS}) set_target_properties(mxnet_static PROPERTIES
+  # OUTPUT_NAME mxnet) target_include_directories(mxnet_static PUBLIC
+  # ${mxnet_INCLUDE_DIRS}) target_link_directories(mxnet_static PUBLIC
+  # ${mxnet_LINK_DIRS}) target_compile_definitions(mxnet_static PUBLIC
+  # ${mxnet_COMPILE_DEFINITIONS})
 
-  add_library(mxnet SHARED ${DUMMY_SOURCE})
-  target_link_libraries(
-    mxnet PRIVATE ${BEGIN_WHOLE_ARCHIVE} $<TARGET_FILE:mxnet_static>
-                  ${END_WHOLE_ARCHIVE})
-  target_link_libraries(mxnet PRIVATE mxnet_static)
+  add_library(mxnet SHARED ${SOURCE} ${CUDA})
+  # target_link_libraries(mxnet PUBLIC ${CMAKE_DL_LIBS} ${mxnet_LINKER_LIBS})
+  # set_target_properties(mxnet PROPERTIES OUTPUT_NAME mxnet)
+  # target_include_directories(mxnet PUBLIC ${mxnet_INCLUDE_DIRS})
+  # target_link_directories(mxnet PUBLIC ${mxnet_LINK_DIRS})
+  # target_compile_definitions(mxnet PUBLIC ${mxnet_COMPILE_DEFINITIONS})
 
 elseif(MSVC)
   if(USE_CUDA)
@@ -782,8 +832,9 @@ elseif(MSVC)
         target_link_libraries(mxnet PRIVATE cudart Shlwapi)
         list(GET arch_code_list 0 mxnet_first_arch)
         foreach(arch ${arch_code_list})
-          add_library(mxnet_${arch} SHARED ${SOURCE})
-          target_link_libraries(mxnet_${arch} PUBLIC mshadow ${TVM_LIBRARIES})
+          add_library(mxnet_${arch} SHARED ${SOURCE} ${CUDA})
+          target_link_libraries(mxnet_${arch} PUBLIC ${mxnet_LINKER_LIBS})
+          target_link_options(mxnet_${arch} PUBLIC ${mxnet_LINKER_OPTIONS})
           target_compile_options(
             mxnet_${arch}
             PRIVATE
@@ -814,7 +865,7 @@ elseif(MSVC)
       else(USE_SPLIT_ARCH_DLL)
         string(REPLACE ";" " " NVCC_FLAGS_ARCH "${NVCC_FLAGS_ARCH}")
         set(CMAKE_CUDA_FLAGS "${CUDA_ARCH_FLAGS_SPACES}")
-        add_library(mxnet SHARED ${SOURCE})
+        add_library(mxnet SHARED ${SOURCE} ${CUDA})
         target_compile_options(
           mxnet
           PRIVATE
@@ -828,26 +879,22 @@ elseif(MSVC)
 
       endif(USE_SPLIT_ARCH_DLL)
     else()
-      add_library(mxnet SHARED ${SOURCE})
+      add_library(mxnet SHARED ${SOURCE} ${CUDA})
     endif()
   else()
-    add_library(mxnet SHARED ${SOURCE})
+    add_library(mxnet SHARED ${SOURCE} ${CUDA})
   endif()
 endif()
 
 # Link in mshadow and tvmop
-target_link_libraries(mxnet PRIVATE mshadow ${TVM_LIBRARIES})
+target_link_libraries(mxnet PRIVATE ${mxnet_LINKER_LIBS})
 
 # Make sure the mxnet library knows where to find includes
-target_include_directories(
-  mxnet
-  PUBLIC include
-         3rdparty/nvidia_cub
-         3rdparty/tvm/nnvm/include
-         ${CMAKE_BINARY_DIR}/include
-         ${CMAKE_CURRENT_SOURCE_DIR}/include
-         ${CMAKE_CURRENT_SOURCE_DIR}/src
-         ${TVM_INCLUDE_DIR})
+target_include_directories(mxnet PUBLIC ${mxnet_INCLUDE_DIRS})
+
+target_link_directories(mxnet PUBLIC ${mxnet_LINK_DIRS})
+target_compile_definitions(mxnet PUBLIC ${mxnet_COMPILE_DEFINITIONS})
+target_link_options(mxnet PUBLIC ${mxnet_LINKER_OPTIONS})
 
 # ##############################################################################
 # CUSTOM OP LIBRARIES
@@ -856,20 +903,36 @@ target_include_directories(
 add_library(
   customop_lib SHARED
   ${CMAKE_CURRENT_SOURCE_DIR}/example/extensions/lib_custom_op/gemm_lib.cc)
+target_include_directories(
+  customop_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/mxnet
+                      ${mxnet_INCLUDE_DIRS})
+target_compile_options(customop_lib PUBLIC ${mxnet_COMPILE_OPTIONS})
+target_link_directories(customop_lib PUBLIC ${mxnet_LINK_DIRS})
+target_compile_definitions(customop_lib PUBLIC ${mxnet_COMPILE_DEFINITIONS})
+target_link_options(customop_lib PUBLIC ${mxnet_LINKER_OPTIONS})
+
 add_library(
   subgraph_lib SHARED
   ${CMAKE_CURRENT_SOURCE_DIR}/example/extensions/lib_subgraph/subgraph_lib.cc)
-target_include_directories(customop_lib
-                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/mxnet)
-target_include_directories(subgraph_lib
-                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/mxnet)
+target_include_directories(
+  subgraph_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/mxnet
+                      ${mxnet_INCLUDE_DIRS})
+target_compile_options(subgraph_lib PUBLIC ${mxnet_COMPILE_OPTIONS})
+target_link_directories(subgraph_lib PUBLIC ${mxnet_LINK_DIRS})
+target_compile_definitions(subgraph_lib PUBLIC ${mxnet_COMPILE_DEFINITIONS})
+target_link_options(subgraph_lib PUBLIC ${mxnet_LINKER_OPTIONS})
 
 if(USE_CUDA)
   add_library(
     customop_gpu_lib SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/example/extensions/lib_custom_op/relu_lib.cu)
-  target_include_directories(customop_gpu_lib
-                             PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/mxnet)
+  target_include_directories(
+    customop_gpu_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/mxnet
+                            ${mxnet_INCLUDE_DIRS})
+  target_link_directories(customop_gpu_lib PUBLIC ${mxnet_LINK_DIRS})
+  target_compile_definitions(customop_gpu_lib
+                             PUBLIC ${mxnet_COMPILE_DEFINITIONS})
+  target_link_options(customop_gpu_lib PUBLIC ${mxnet_LINKER_OPTIONS})
 endif()
 
 if(UNIX)
@@ -890,31 +953,17 @@ elseif(MSVC)
   endif()
 endif()
 
-if(MSVC)
-  if(USE_SPLIT_ARCH_DLL AND USE_CUDA)
-    foreach(arch ${arch_code_list})
-      target_link_libraries(mxnet_${arch} PUBLIC ${mxnet_LINKER_LIBS})
-    endforeach()
-  else()
-    target_link_libraries(mxnet PUBLIC ${mxnet_LINKER_LIBS})
-  endif()
-else()
-  target_link_libraries(mxnet_static PUBLIC ${mxnet_LINKER_LIBS})
-endif()
-
 # ##############################################################################
 # IM2REC
 # ##############################################################################
 
 if(USE_OPENCV AND OpenCV_VERSION_MAJOR GREATER 2)
   add_executable(im2rec "tools/im2rec.cc")
-  if(MSVC)
-    target_link_libraries(im2rec mxnet)
-  else()
-    target_link_libraries(im2rec ${BEGIN_WHOLE_ARCHIVE} mxnet_static
-                          ${END_WHOLE_ARCHIVE})
-  endif()
-  target_link_libraries(im2rec ${mxnet_LINKER_LIBS} ${OpenCV_LIBS} dmlc)
+  target_compile_options(im2rec PUBLIC ${mxnet_COMPILE_OPTIONS})
+  target_link_directories(im2rec PUBLIC ${mxnet_LINK_DIRS})
+  target_compile_definitions(im2rec PUBLIC ${mxnet_COMPILE_DEFINITIONS})
+  target_link_libraries(im2rec PUBLIC ${mxnet_LINKER_LIBS} mxnet ${OpenCV_LIBS})
+  target_link_options(im2rec PUBLIC ${mxnet_LINKER_OPTIONS})
 else()
   message(
     WARNING
@@ -962,19 +1011,19 @@ if(INSTALL_EXAMPLES)
 endif()
 
 if(USE_SIGNAL_HANDLER)
-  add_definitions(-DMXNET_USE_SIGNAL_HANDLER=1)
+  list(APPEND mxnet_COMPILE_DEFINITIONS -DMXNET_USE_SIGNAL_HANDLER=1)
 endif()
 
 # AUTO_INSTALL_DIR -> Optional: specify post-build install direcory
 if(AUTO_INSTALL_DIR)
-  # ---[ Install Includes
+  # Install Includes
   add_custom_command(
     TARGET mxnet
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CMAKE_CURRENT_SOURCE_DIR}/include ${AUTO_INSTALL_DIR}/include)
 
-  # ---[ Install Examples
+  # Install Examples
   add_custom_command(
     TARGET mxnet
     POST_BUILD
