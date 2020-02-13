@@ -1,4 +1,3 @@
-
 # ---[ Google Test
 if(NOT GTEST_ROOT)
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/googletest")
@@ -26,42 +25,36 @@ if(GTEST_FOUND AND NOT MSVC)
 
   file(GLOB_RECURSE UNIT_TEST_SOURCE "cpp/*.cc" "cpp/*.h")
 
-  include_directories(${GTEST_INCLUDE_DIR})
-  include_directories(cpp/include)
-  include_directories(../cpp-package/include)
+  set(mxnet_TEST_INCLUDE_DIRS ${mxnet_INCLUDE_DIRS})
+  list(APPEND mxnet_TEST_INCLUDE_DIRS ${GTEST_INCLUDE_DIR} cpp/include
+       ../cpp-package/include)
+  list(REMOVE_DUPLICATES mxnet_TEST_INCLUDE_DIRS)
 
-  if (NOT PRIVATE_RUNTIME_DIR)
-   set(PRIVATE_RUNTIME_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+  if(NOT PRIVATE_RUNTIME_DIR)
+    set(PRIVATE_RUNTIME_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
   endif()
 
   add_executable(${PROJECT_NAME}_unit_tests ${UNIT_TEST_SOURCE})
   set_property(TARGET ${PROJECT_NAME}_unit_tests
                PROPERTY RUNTIME_OUTPUT_DIRECTORY ${PRIVATE_RUNTIME_DIR})
-  if (USE_CPP_PACKAGE)
+  if(USE_CPP_PACKAGE)
     add_dependencies(${PROJECT_NAME}_unit_tests cpp_package_op_h)
   endif()
 
-  if(UNITTEST_STATIC_LINK)
-    target_link_libraries(${PROJECT_NAME}_unit_tests
-      ${GTEST_LIBRARY}
-      ${BEGIN_WHOLE_ARCHIVE} mxnet_static ${END_WHOLE_ARCHIVE}
-      dmlc
-      ${mxnet_LINKER_LIBS}
-      ${pslite_LINKER_LIBS}
-      )
-  else()
-    target_link_libraries(${PROJECT_NAME}_unit_tests
-      ${GTEST_LIBRARY}
-      dmlc
-      ${nnvm_LINKER_LIBS}
-      ${mxnet_LINKER_LIBS}
-      mxnet
-      ${pslite_LINKER_LIBS}
-      )
-  endif()
+  target_compile_options(${PROJECT_NAME}_unit_tests
+                         PUBLIC ${mxnet_COMPILE_OPTIONS})
+  target_include_directories(${PROJECT_NAME}_unit_tests
+                             PUBLIC ${mxnet_TEST_INCLUDE_DIRS})
+  target_link_directories(${PROJECT_NAME}_unit_tests PUBLIC ${mxnet_LINK_DIRS})
+  target_compile_definitions(${PROJECT_NAME}_unit_tests
+                             PUBLIC ${mxnet_COMPILE_DEFINITIONS})
+  target_link_libraries(
+    ${PROJECT_NAME}_unit_tests PUBLIC ${GTEST_LIBRARY} ${nnvm_LINKER_LIBS}
+                                      ${mxnet_LINKER_LIBS} mxnet)
+  target_link_options(${PROJECT_NAME}_unit_tests PUBLIC ${mxnet_LINKER_OPTIONS})
 
-  add_test(AllTestsIn${PROJECT_NAME}UnitTests ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME}_unit_tests)
+  add_test(AllTestsIn${PROJECT_NAME}UnitTests
+           ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME}_unit_tests)
 else()
   message(STATUS "Google Test not found")
 endif()
-
