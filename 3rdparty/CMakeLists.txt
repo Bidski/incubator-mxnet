@@ -103,6 +103,8 @@ option(USE_CUDNN "Build with cudnn support" ON)
 # autodetects support if ON
 option(USE_F16C "Build with x86 F16C instruction support" ON)
 
+option(USE_OPENMP "Build with Openmp support" ON)
+
 option(USE_MKL_IF_AVAILABLE "Use MKL if found" ON)
 if(USE_MKL_IF_AVAILABLE
    AND (NOT APPLE)
